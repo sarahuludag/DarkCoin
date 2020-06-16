@@ -4,10 +4,19 @@ from pyspark.sql.functions import explode, concat_ws, udf, concat, col, lit, whe
 from pyspark.sql.types import *
 import cassandra
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from pyspark.sql import *
 
 
+# Write result data frame into PostgreSQL 
+def write_postgres(result):
+	mode = "append"
+	url = "jdbc:postgresql://" + $POSTGRESHOST + $POSTGRESPORT + $POSTGRESDB
+	properties = {"user": $POSTGRESUSER,"password": $POSTGRESPASS,"driver": "org.postgresql.Driver"}
+	result.write.jdbc(url=url, table=$POSTGRESTRANSACTIONS, mode=mode, properties=properties)
 
+
+# Main 
 appName = "DarkCoinJoin"
 master = $MASTERIP
 
@@ -21,44 +30,41 @@ spark = SparkSession.builder \
   	.config('spark.driver.port', $DRIVERPORT) \
     .getOrCreate()
 
-# Read Bitcoin data from Cassandra
+sqlContext = SQLContext(spark)
+
+# Read Bitcoin table from Cassandra
 df_bitcoin = spark.read.format("org.apache.spark.sql.cassandra") \
 	.options(table=$CASSANDRABITCOIN, keyspace=$CASSANDRAKEYSPACE) \
 	.load()
-df_bitcoin.show()
+df_bitcoin.registerTempTable("bitcoin")
 
-# Read Silkroad data from Cassandra
-df_darkweb = spark.read.format("org.apache.spark.sql.cassandra") \
-	.options(table=$CASSANDRASILKROAD, keyspace=$CASSANDRAKEYSPACE) \
-	.load() \
-	.filter("ad_date='2014-01-16 00:00:00'")
-df_darkweb.show()
+# Read Marketplace Table from Cassandra
+df_marketplace = spark.read.format("org.apache.spark.sql.cassandra") \
+	.options(table=$CASSANDRAMARKETS, keyspace=$CASSANDRAKEYSPACE) \
+	.load() 
+df_marketplace.registerTempTable("marketplace")
 
-print("-----------Pre processing-----------------")
-result = df_bitcoin.join(df_darkweb, df_bitcoin.recv_amount == df_darkweb.price, 'inner').drop(df_bitcoin.recv_amount).collect()
+# Udf function to increment and return date num_days
+date_incr = (udf(lambda date, num_days:  date + relativedelta(days=num_days), TimestampType()))
 
-# Convert list to RDD
-rdd = spark.sparkContext.parallelize(result)
+# Join
+result = df_bitcoin \
+	.join(df_marketplace, (df_bitcoin.recv_amount == df_marketplace.price) & \
+		(df_bitcoin.time > df_marketplace.ad_date) & (df_bitcoin.time <  date_incr(df_marketplace.ad_date, lit(10))), 'inner') \
+	.drop(df_bitcoin.recv_amount) 
 
-# Create a schema for the dataframe	
-schema = StructType([
-	StructField('tx_hash', StringType(), True),
-	StructField('send_addr', StringType(), True),
-	StructField('recv_addr', StringType(), True),
-	StructField('time', DateType(), True),
-	StructField('block_num', StringType(), True),
-	StructField('send_amount', FloatType(), True),
-	StructField('price', FloatType(), True),
-	StructField('product_name', StringType(), True),
-	StructField('ad_date', DateType(), True),
-	StructField('category', StringType(), True),
-	StructField('href', StringType(), True),
-	StructField('vendor', StringType(), True),
-	StructField('ship_from', StringType(), True),
-	StructField('ship_to', StringType(), True)
-])
+# Show size of result with a sample 
+result.show(20,False)
+print("------------ Total: " + str(result.count()))
 
-# Create data frame
-df = spark.createDataFrame(rdd,schema)
-df.show(20,False)
+# Write into Postgres
+write_postgres(result)
+
+
+
+
+
+
+
+
 

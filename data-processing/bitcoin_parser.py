@@ -12,6 +12,18 @@ import cassandra
 
 
 def validateJSON(jsonData):
+	"""
+	Check if file is in valid json file
+
+	Try to load jsonData as a json file, if throws an exception return false.
+
+	Parameters:
+	jsonData (str): string that will be validated
+
+	Returns:
+	bool: if jsonData is in valid json format or not
+
+	"""
     try:
         json.loads(jsonData)
     except ValueError as err:
