@@ -22,14 +22,15 @@ Data of Bitcoin blocks acquired from blockchain.com API by running multithreaded
 
 ## Engineering challenges
 
-Getting data of each Bitcoin block with HTTP requests from the API is a very slow process. Used a multithreading approach to speed up process.
+* Getting data of each Bitcoin block with HTTP requests from the API is a very slow process. Used a multithreading approach to speed up process.
 
-Creating schema and parser for each marketplace since they have different format and data.
+* Creating schema and parser for each marketplace since they have different format and data.
 
-## Trade-offs
+* Creating a unified data model for the Dark Web markets that would work with all parsers.
 
-<hr/>
+* Using Map-Reduce to boost parsing operations.
 
-## How to install and get it up and running
+* Partitioning data on Cassandra according data according to date column so they will be close to each other in database. It speeded up writing/reading process while reading from Spark which used date column for filtering. 
 
-<hr/>
+* Preprocessing and Denormalization of the resulting database to achieve fast querying and filtering.
+
