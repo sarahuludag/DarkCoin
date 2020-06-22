@@ -3,7 +3,6 @@
 # Import libraries
 from bs4 import BeautifulSoup	# BeautifulSoup for parsing HTML
 
-import sys
 import boto3
 import itertools
 from datetime import datetime
@@ -19,11 +18,12 @@ from pyspark.sql.functions import explode, concat_ws, udf, concat, col, lit, whe
 
 
 
+
 def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Cryptomarket HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -33,13 +33,11 @@ def parse_files( file_names ):
 
 	"""
 
-	sys.setrecursionlimit( 10000 )
-
 	# Use boto3 to access S3 bucket
 	s3 = boto3.resource( 's3' )
 
 	# Create a list to keep items parsed
-	items = []
+	items=[]
 
 	# For each file read from s3 and parse items
 	for file_name in file_names:
@@ -60,81 +58,51 @@ def parse_files( file_names ):
 				html_soup = BeautifulSoup( body, 'html.parser' )
 
 				# Start parsing
-				categories = [] # List to store categories
-				# Parse categories if exists
-				if( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if ( html_soup.find_all( "div", id = "img" ) ):
+					# Find contents
+					contents = html_soup.find_all( "div", id = "img" )
 
-					# For each category parsed, add it to the categories list
-					for category in cats:
-						if( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
-					
-					# Find products list item
-					if( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
+					# For each content in contents
+					i = 0
+					for content in contents:
+						i +=1
 
-						# For each row in products
-						for row in products:
+						# Parse image link
+						if( content.find( "img", style = "width:80px; height:80px" ) and content.find( "div", id = "img" ) ):
+							images = content.find_all( "img", style = "width:80px; height:80px" )
+							image_id = images[0]["src"]
 
-							# Parse image link if it exists
-							image_id = ""
-							if( row.find( "td", style = "text-align: center;" ) ):
-								if( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
-									
 
-							# Find product name and item description
-							if( row.find( "td", class_ = "column-name" ) ):
-								if( row.find( "td", class_ = "column-name" ).a ):
+						if ( content.find( "div", style = "min-width:200px" ) ):
 
-									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
+							# Parse product name
+							product_name = content.find( "div", style = "min-width:200px" ).find( "a" ).text
 
-									# Parse description if it exists
-									desc = ""
-									if( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
-										
+							# Parse price
+							price_raw = content.find( "b", style = "color:#fff665" )
+							price = price_raw.text.split( "/" )[1].split()[0]
+							
+							# Check if product name and price is not null
+							if( product_name and price ):
 
-									# Parse price
-									if( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
+								# Parse vendor
+								vendor = price_raw.find_next( "a" ).text
 
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
-									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
+								# Parse category
+								category = price_raw.find_next( "a" ).find_next( "a" ).text
 
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
+								# Parse shipping information
+								ship_from = price_raw.find_next( "b", id = "img" ).text
+								ship_to = price_raw.find_next( "b", id = "img" ).find_next( "b", id = "img" ).text
 
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
-
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
-
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
+								# Add parsed item to the items list
+								items.append( ( "cryptomarket", product_name, float( price ), category, vendor, "", datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
 
 										
 	# Return parsed items
 	return items
+
+
 
 
 def main():
@@ -149,7 +117,7 @@ def main():
 	file_list=[]
 
 	# Open the file and read file names
-	f = open( config.files["AGORAFILES"], "r" )
+	f = open( config.files["CRYPTOMARKETFILES"], "r" )
 	for x in f:
 		file_list.append( x.strip() )
 
@@ -176,7 +144,7 @@ def main():
 	rdd = rdd_file.mapPartitions( parse_files )
 
 
-	# Create a schema for the dataframe
+	# Create a schema for the dataframe	
 	schema = StructType([
 		StructField( 'marketplace', StringType(), True ),
 		StructField( 'product_name', StringType(), True ),
@@ -212,6 +180,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
 
 
