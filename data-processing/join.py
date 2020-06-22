@@ -7,6 +7,7 @@ from pyspark.sql import SparkSession
 from pyspark import SparkContext, SparkConf
 from pyspark.sql.functions import explode, concat_ws, udf, concat, col, lit, when
 
+import config
 import cassandra
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -87,7 +88,8 @@ def main():
 
 
 
-
+if __name__ == "__main__":
+    main()
 
 
 

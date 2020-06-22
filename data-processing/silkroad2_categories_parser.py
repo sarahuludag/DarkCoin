@@ -35,7 +35,7 @@ def parse_files( file_names ):
 	s3 = boto3.resource( 's3' )
 
 	# Create a list to keep items parsed
-	items=[]
+	items = []
 
 	# For each file read from s3 and parse items
 	for file_name in file_names:
@@ -91,7 +91,7 @@ def parse_files( file_names ):
 										price = item.find( "div", class_ = "price_big" ).text.strip()[1:]	# Price of the item
 
 										# Add parsed item to the items list
-										items.append( ( "silkroad2", product_name, float(price), category, vendor, "", datetime.strptime(date, '%Y-%m-%d'), ship_to, ship_from, href ) )
+										items.append( ( "silkroad2", product_name, float( price ), category, vendor, "", datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, href ) )
 
 	# Return parsed items
 	return items
@@ -171,7 +171,8 @@ def main():
 
 
 
-
+if __name__ == "__main__":
+    main()
 
 
 

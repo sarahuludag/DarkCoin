@@ -2,6 +2,7 @@
 # Import libraries
 import json
 import boto3
+import config
 import itertools
 from datetime import datetime
 
@@ -57,7 +58,7 @@ def parse_files( file_names ):
 	s3 = boto3.resource( 's3' )
 
 	# Create a list to keep blocks parsed
-	blocks=[]
+	blocks = []
 
 	# For each file read from s3 and parse blocks
 	for file_name in file_names:
@@ -188,7 +189,8 @@ def main():
 	  .save()
 
 
-
+if __name__ == "__main__":
+    main()
 
 
 
