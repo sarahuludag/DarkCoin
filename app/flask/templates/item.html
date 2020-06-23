@@ -1,0 +1,143 @@
+<html>
+<!-- results.html -->
+	<head>
+
+		<!-- Font Awesome -->
+		<link rel = "stylesheet" href = "https://use.fontawesome.com/releases/v5.8.2/css/all.css">
+
+		<!-- Bootstrap core CSS -->
+		<link href = "/static/css/bootstrap.min.css" rel = "stylesheet">
+
+		<!-- Bootstrap CSS -->
+		<link href = "https://stackpath.bootstrapcdn.com/bootswatch/4.5.0/sketchy/bootstrap.min.css" rel = "stylesheet" integrity = "sha384-NkI/Nlr1DZ5rUXWWdnuZb97FQRgCCcwC66DC+HUCY0oVx6BgBHUfPcwL1vwp93JZ" crossorigin = "anonymous">
+
+		<!-- Javascript -->
+		<script>
+
+			// Open Bitcoin details on button click
+			function show() {
+
+				// Display element
+			    document.getElementById("tobehidden").style.display = "block";
+			}
+		</script>
+		
+	</head>
+
+
+	<body>
+
+		<div style = "margin-left:30px; margin-right:30px; width:auto">
+			<!-- Navbar -->
+			<nav class = "navbar navbar-expand-lg navbar-dark bg-primary">
+
+			  <!-- Set title -->
+			  <a class = "navbar-brand" href = "/">{{t_title}}</a>
+			  <button class = "navbar-toggler" type = "button" data-toggle = "collapse" data-target = "#navbarColor01" aria-controls = "navbarColor01" aria-expanded = "false" aria-label = "Toggle navigation">
+			    <span class = "navbar-toggler-icon"></span>
+			  </button>
+
+			  <div class = "collapse navbar-collapse" id = "navbarColor01">
+			    <ul class = "navbar-nav mr-auto">
+
+			      <!-- Learn Bitcoin -->
+			      <li class = "nav-item active">
+			        <a class = "nav-link" href = "/">Learn Bitcoin <span class = "sr-only">(current)</span></a>
+			      </li>
+			      <!-- Explore Darkweb -->
+			      <li class = "nav-item">
+			        <a class = "nav-link" href = "#">Explore Darkweb</a>
+			      </li>
+			      <!-- Methodology -->
+			      <li class = "nav-item">
+			        <a class = "nav-link" href = "#">Methodology</a>
+			      </li>
+			      <!-- About Me -->
+			      <li class = "nav-item">
+			        <a class = "nav-link" href = "#">About Me</a>
+			      </li>
+			    </ul>
+
+			    <!-- Search -->
+			    <form class = "form-inline my-2 my-lg-0">
+			      <input class = "form-control mr-sm-2" type = "text" placeholder = "Search">
+			      <button class = "btn btn-secondary my-2 my-sm-0" type = "submit">Search</button>
+			    </form>
+			  </div>
+			</nav>
+		</div>
+		<br>
+
+		<!-- Header -->
+		<h2 style = "margin-left:60px; margin-right:60px; width:auto"> 
+			Product Details 
+		</h2>
+
+		<!-- Table with two columns -->
+ 		<table align = "center" style = "width: 100%; margin-left:auto; margin-right:auto;">
+		    <tbody>
+		    	<tr class = "table-active">
+
+		    		<!-- First Column -->
+			  		<td valign = "top">
+
+			  			<!-- Jumbotron -->
+						<div class = "jumbotron" style = "margin:60px; width:auto">
+
+							<!-- Product Details -->
+							<h4 class = "display-4">{{ query_results.product_name[0] }}</h4>
+							<p class = "lead">Vendor: {{ query_results.vendor[0] }}</p>
+							<p class = "lead">Price: {{ query_results.price[0] }}</p>
+							<p class = "lead">Market Place: {{ query_results.marketplace[0] }}</p>
+							<p class = "lead">Category: {{ query_results.category[0] }}</p>
+
+
+							<hr class = "my-4">
+							<p>Date: {{ query_results.ad_date[0] }}</p>
+							{% if query_results.ship_from[0] %}
+								<p>Ship From: {{ query_results.ship_from[0] }}</p>
+							{% endif %}
+							{% if query_results.ship_to[0] %}
+								<p>Ship To: {{ query_results.ship_to[0] }}</p>
+							{% endif %}
+							{% if query_results.description[0] %}
+								<p>Description: {{ query_results.description[0] }}</p>
+							{% endif %}
+
+							<!-- Show Bitcoin transactions -->
+							<p class = "lead">
+								<a class = "btn btn-primary btn-lg" href = "#" onclick = 'show();' role = "button">Check Identity</a>
+							</p>
+
+						</div>
+					</td>
+
+					<!-- Second Column -->
+					<td>
+
+						<!-- Jumbotron -->
+						<div id = "tobehidden" class = "jumbotron" style = "margin:60px; width:auto; display:none;" >
+
+							<!-- Bitcoin Transactions Details -->
+							<h3 class = "display-4">Bitcoin Addresses</h3>
+							<hr class = "my-4">
+
+							<!-- Loop through all transactions and print all -->
+							{% for i in range(len) %}
+								<p class = "lead">TX Hash: {{ query_results.tx_hash[i] }}</p>
+									<p>Sender Address: {{ query_results.send_addr[i] }}</p>
+									<p>Receiver Address: {{ query_results.recv_addr[i] }}</p>
+								<hr class = "my-4">
+								<p class = "lead"></p>
+							{% endfor %}
+
+						</div>
+
+					</td>
+				</tr>
+
+			</tbody>
+		</table>
+
+	</body>
+</html>

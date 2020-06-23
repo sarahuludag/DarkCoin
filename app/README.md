@@ -1,3 +1,3 @@
-# Application for Project-Title
+# Application for DarkCoin
 
-Provide details about how your UI works.
+Website implemented using Flask, Python, HTML and CSS.
