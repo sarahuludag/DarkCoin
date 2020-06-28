@@ -23,7 +23,7 @@ def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Evolution HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if ( file_name is not None and file_name is not "" ):
+		if( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if ( obj is not None ):	
+			if( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -62,79 +62,101 @@ def parse_files( file_names ):
 				# Start parsing
 				categories = [] # List to store categories
 				# Parse categories if exists
-				if ( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if( html_soup.find( "ol", class_ = "breadcrumb" ) ):
+					breadcrumb = html_soup.find( "ol", class_ = "breadcrumb" )
+					cats = breadcrumb.find_all( "li" )
 
 					# For each category parsed, add it to the categories list
 					for category in cats:
-						if ( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
+						categories.append( category.text )
 					
-					# Find products list item
-					if ( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
 
-						# For each row in products
-						for row in products:
+				# Parse image link if it exists
+				image_id = ""
+				if( html_soup.find( "div", class_ = "col-md-5" ) \
+					and html_soup.find( "div", class_ = "col-md-5" ).find( "a", class_ = "thumbnail" ) ):
 
-							# Parse image link if it exists
-							image_id = ""
-							if ( row.find( "td", style = "text-align: center;" ) ):
-								if ( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
-									
+					image_id2 = html_soup.find( "div", class_ = "col-md-5" ).find( "a", class_ = "thumbnail" ).get( "href" )
+					image_id = "/".join( image_id2.split( "/" )[ 3: ] )
 
-							# Find product name and item description
-							if ( row.find( "td", class_ = "column-name" ) ):
-								if ( row.find( "td", class_ = "column-name" ).a ):
 
-									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
+				if( html_soup.find( "div", class_ = "col-md-7" ) ):
+					info_column = html_soup.find( "div", class_ = "col-md-7" )
 
-									# Parse description if it exists
-									desc = ""
-									if ( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
-										
+					# Parse product name 
+					product_name = ""
+					if( info_column.h3 ):
+						product_name = info_column.h3.text
+		
+					elif( info_column.h1 ):
+						product_name = info_column.h1.text
 
-									# Parse price
-									if ( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
+					elif( info_column.h2 ):
+						product_name = info_column.h2.text
 
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
-									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if ( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
+					elif( info_column.h4 ):
+						product_name = info_column.h4.text	
 
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
+					# Check if product name exists
+					if( product_name ):
 
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
+						# Parse vendor
+						vendor = ""
+						if( info_column.find( "div", class_ = "seller-info text-muted" ) \
+							and info_column.find( "div", class_ = "seller-info text-muted" ).find( "a" ) ):
 
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
+							vendor2 = info_column.find( "div", class_ = "seller-info text-muted" )
+							vendor = vendor2.find( "a" ).text
 
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
 
+						# Parse price
+						price = ""
+						if( info_column.find( "h4", class_ = "text-info" ) ):
+							price2 = info_column.find( "h4", class_ = "text-info" ).text
+							price = price2.split( " " )[1]
+
+						elif( info_column.find( "h3", class_ = "text-info" ) ):
+							price2 = info_column.find( "h3", class_ = "text-info" ).text
+							price = price2.split( " " )[1]
+						
+
+						# Check if price exists
+						if( price ):  
+
+							# Parse description if exists
+							desc = ""
+							if( html_soup.find( "div", class_ = "product-summary" ) ):
+								desc = html_soup.find( "div", class_ = "product-summary" ).p.text
+
+
+							# Parse shipping information
+							# Parse ship_to
+							ship_to = ""
+							if( html_soup.find_all( "div", class_ = "col-md-9" ) \
+								and len( html_soup.find_all( "div", class_ = "col-md-9" ) ) > 1 ):	
+ 
+								ship_to2 = html_soup.find_all( "div", class_ = "col-md-9" )[1]
+								if( ship_to2.find_all( "p" ) and len( ship_to2.find_all( "p" ) ) > 1 ):
+									ship_to = str( ship_to2.find_all( "p" )[1].text )
+
+							# Parse ship_from
+							ship_from = ""
+							if( html_soup.find( "div", class_ = "widget" ) ):
+								widgets = html_soup.find_all( "div", class_ = "widget" )
+								for widget in widgets:
+									if widget.h3 and widget.h3.text == "Ships From":
+										ship_from = widget.p.text
+
+							# Join categories into a string
+							categories_str = str( "/".join( categories ) )
+
+							# Add parsed item to the items list
+							items.append( ( "evolution", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
 										
 	# Return parsed items
 	return items
+
+
 
 
 def main():
@@ -212,6 +234,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 

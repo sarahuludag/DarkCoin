@@ -19,11 +19,35 @@ from pyspark.sql.functions import explode, concat_ws, udf, concat, col, lit, whe
 
 
 
+
+def is_float( str ):
+	"""
+	Is Float
+
+	Check if given string is a valid float
+
+	Parameters:
+	str (string): string to be checked
+
+	Returns:
+	boolean: if it is a valid float
+
+	"""
+
+    try:
+        float( str )
+        return True
+
+    except ValueError:
+        return False
+
+
+
 def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Hydra HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -60,81 +84,76 @@ def parse_files( file_names ):
 				html_soup = BeautifulSoup( body, 'html.parser' )
 
 				# Start parsing
-				categories = [] # List to store categories
-				# Parse categories if exists
-				if ( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if ( html_soup.find( "div", class_ = "span4 well bdgreen" ) ):
+					price_content = html_soup.find( "div", class_ = "span4 well bdgreen" )
 
-					# For each category parsed, add it to the categories list
-					for category in cats:
-						if ( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
-					
-					# Find products list item
-					if ( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
+					# Check if they accept Bitcoin
+					spans = price_content.find_all( "span" )
+					for span in spans:
 
-						# For each row in products
-						for row in products:
+						# Check if bitcoin symbol is in span
+						if ( "฿" in str( span ) ):
 
-							# Parse image link if it exists
-							image_id = ""
-							if ( row.find( "td", style = "text-align: center;" ) ):
-								if ( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
-									
+							# Parse price
+							price = span.text[ 1: ]
 
-							# Find product name and item description
-							if ( row.find( "td", class_ = "column-name" ) ):
-								if ( row.find( "td", class_ = "column-name" ).a ):
+							# Parse vendor
+							vendor = ""
+							if ( html_soup.find( "div", class_ = "span6 well bblue" ) ):
+								vendor = html_soup.find( "div", class_ = "span6 well bblue" )
+								vendor = vendor.h2.text.strip()
+
+							
+							if ( html_soup.find( "div", class_ = "span7" ) ):
+								image = html_soup.find( "div", class_ = "span7" )
+								image = image.find( "img" )
+
+								# Parse product name
+								product_name = image["alt"]
+
+								# Parse image link
+								image_id = image["src"]
+
+								# Parse shipping information
+								ship_from, ship_to = "", ""
+								if ( html_soup.find( "ul", class_ = "activity" ) ):
+									shipping_list = html_soup.find( "ul", class_ = "activity" )
+									lis = shipping_list.find_all( "li" )
+
+									# Join list of shipping places into a string
+									for li in lis:
+
+										# Parse ship_from
+										if ( "from" in li.text.lower() ):
+											ship_from = " ".join( li.text.split()[2:] )
+
+										# Parse ship_to
+										if ( "to" in li.text.lower() ):
+											ship_to = " ".join( li.text.split()[2:] )
+
+
+								if ( html_soup.find( "div", class_ = "widget span12 wblue" ) ):
+									product_details = html_soup.find( "div", class_ = "widget span12 wblue" )
 
 									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
-
-									# Parse description if it exists
-									desc = ""
-									if ( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
-										
-
-									# Parse price
-									if ( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
-
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
+									product_name2 = html_soup.find( "div", class_ = "widget-head" ).text
+									product_details = product_details.find( "div", class_ = "widget-content" )
+									if ( product_name != product_name2 ):
+										product_name = product_name2
 									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if ( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
+									# Parse description
+									desc = product_details.text
 
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
-
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
-
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
-
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
+									# Check if product name and price exist and if price is valid
+									if ( product_name and price and is_float( price ) ):
+										
+										# Add parsed item to the items list
+										items.append( ( "hydra", product_name, float( price ), "", vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
 
 										
 	# Return parsed items
 	return items
+
 
 
 def main():
@@ -149,7 +168,7 @@ def main():
 	file_list=[]
 
 	# Open the file and read file names
-	f = open( config.files["AGORAFILES"], "r" )
+	f = open( config.files["HYDRAFILES"], "r" )
 	for x in f:
 		file_list.append( x.strip() )
 
@@ -212,6 +231,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 

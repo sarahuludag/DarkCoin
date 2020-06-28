@@ -23,7 +23,7 @@ def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Diabolus HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if ( file_name is not None and file_name is not "" ):
+		if( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if ( obj is not None ):	
+			if( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -60,77 +60,77 @@ def parse_files( file_names ):
 				html_soup = BeautifulSoup( body, 'html.parser' )
 
 				# Start parsing
-				categories = [] # List to store categories
-				# Parse categories if exists
-				if ( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if( html_soup.find( "div", style = "min-width:275px" ) ):
+					content = html_soup.find( "div", style = "min-width:275px" )
 
-					# For each category parsed, add it to the categories list
-					for category in cats:
-						if ( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
+					# Parse product name
+					product_name = None
+					if( content.find( "h1" ) ):
+						product_name = content.find( "h1" ).text
+
+					if( content.find( "h3" ) ):
+						product_name = content.find( "h3" ).text
+
+					if( content.find( "h2" ) ):
+						product_name = content.find( "h2" ).text
+
+					if( content.find( "h4" ) ):
+						product_name = content.find( "h4" ).text
 					
-					# Find products list item
-					if ( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
 
-						# For each row in products
-						for row in products:
+					# Parse image link if it exists
+					image_id = ""
+					if( content.find( "a", target = "_blank" ) ):
+						image_id = content.find( "a", target = "_blank" ).get( "href" )
+						
 
-							# Parse image link if it exists
-							image_id = ""
-							if ( row.find( "td", style = "text-align: center;" ) ):
-								if ( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
-									
+					if( content.find_all( "span", class_ = "form-control" ) ):
+						spans = content.find_all( "span", class_ = "form-control" )
+						
+						# Check if Bitcoin is accepted
+						if( spans[0].find( "img", src = "btc.png" ) ):
+							if ( spans[1].text.split( "/" ) ):
 
-							# Find product name and item description
-							if ( row.find( "td", class_ = "column-name" ) ):
-								if ( row.find( "td", class_ = "column-name" ).a ):
-
-									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
-
-									# Parse description if it exists
-									desc = ""
-									if ( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
+								# Parse price
+								prices = spans[1].text.split( "/" )
+								for price_item in prices:
+									if "BTC" in price_item:
+										price = price_item.strip().split()[0]
 										
 
-									# Parse price
-									if ( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
-
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
+							# Check if product name and price exists
+							if( product_name and price ):
+								
+								# Parse vendor
+								vendor = ""
+								if ( "Vendor" in spans[2].text ):
+									vendor = spans[2].find( "a" ).text
 									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if ( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
+								# Parse shipping information if exists
+								# Parse ship_from
+								ship_from = ""
+								if ( "from" in spans[3].text.lower() ):
+									ship_from = " ".join( ( spans[3].text ).split()[2] )
+									
+								# Parse ship_to
+								ship_to = ""
+								if ( "to" in spans[4].text.lower() ):
+									ship_to = " ".join( ( spans[4].text ).split()[2] )
+									
 
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
+								# Parse category if exists
+								category = ""
+								if ( "category" in spans[7].text.lower() ):
+									category = ( spans[7].text ).split()[1]
+									
 
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
+								# Parse description if exists
+								desc = ""
+								if( content.find( "div", id = "cats" ) ):
+									desc = content.find( "div", id = "cats" ).text
 
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
-
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
+								# Add parsed item to the items list
+								items.append( ( "diabolus", product_name, float( price ), category, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
 
 										
 	# Return parsed items
@@ -149,7 +149,7 @@ def main():
 	file_list=[]
 
 	# Open the file and read file names
-	f = open( config.files["AGORAFILES"], "r" )
+	f = open( config.files["DIABOLUSFILES"], "r" )
 	for x in f:
 		file_list.append( x.strip() )
 
@@ -212,6 +212,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 

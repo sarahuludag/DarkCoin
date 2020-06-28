@@ -23,7 +23,7 @@ def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Cloudnine HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if ( file_name is not None and file_name is not "" ):
+		if( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if ( obj is not None ):	
+			if( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -62,79 +62,63 @@ def parse_files( file_names ):
 				# Start parsing
 				categories = [] # List to store categories
 				# Parse categories if exists
-				if ( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if( html_soup.find( "span", class_ = "label label-primary" ) ):
+					cat = html_soup.find( "span", class_ = "label label-primary" ).text
 
-					# For each category parsed, add it to the categories list
-					for category in cats:
-						if ( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
+					# Split categories, add it to the categories list
+					categories = cat.strip().split( "(" )[0].split( " / " )
 					
-					# Find products list item
-					if ( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
 
-						# For each row in products
-						for row in products:
+				# Delete one table 
+				if( html_soup.find( "table", class_ = "padded" ) ):
+					table = html_soup.find( "table", class_ = "padded" )
+					table.extract()
+				else:
+					print( "no tbody found" )
 
-							# Parse image link if it exists
-							image_id = ""
-							if ( row.find( "td", style = "text-align: center;" ) ):
-								if ( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
+
+				# Find table rows
+				if ( html_soup.find_all( "tr" ) ):
+					rows = html_soup.find_all( "tr" )
+					
+					# For each row in rows
+					for row in rows:
+
+						# Parse image link if it exists
+						image_id = ""
+						if row.td.find("a"):
+							image_id = str(row.find("img")["src"])
+
+						# Parse product name and href
+						if row.find_next( "td" ).find_next( "td" ):
+							href = row.find_next( "td" ).find_next( "td" ).a.get( "href" )
+							product_name = row.find_next( "td" ).find_next( "td" ).a.text
+
+							
+							if row.find_all( "td", class_ = "nowrap right" ):
+								last_two = row.find_all( "td", class_ = "nowrap right" )
+								
+								# Parse price and vendor
+								if( len( row.find_all( "div", class_ = "price" ) ) > 1 ):
+									price = row.find_all( "div", class_ = "price" )[1].text.split()[0]
 									
+									vendor = row.find( "div", class_ = "vendor" ).find( "a" ).text
 
-							# Find product name and item description
-							if ( row.find( "td", class_ = "column-name" ) ):
-								if ( row.find( "td", class_ = "column-name" ).a ):
 
-									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
+									# Check if product name and price exists
+									if( product_name and price ):
 
-									# Parse description if it exists
-									desc = ""
-									if ( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
-										
+										# Join categories into a string	
+										categories_str = str( "/".join( categories ) )
 
-									# Parse price
-									if ( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
-
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
-									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if ( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
-
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
-
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
-
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
-
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
+										# Add parsed item to the items list
+										items.append( ( "cloudnine", product_name, float( price ), categories_str, vendor, "", datetime.strptime( date, '%Y-%m-%d' ), "", "", image_id ) )
 
 										
 	# Return parsed items
 	return items
+
+
 
 
 def main():
@@ -149,7 +133,7 @@ def main():
 	file_list=[]
 
 	# Open the file and read file names
-	f = open( config.files["AGORAFILES"], "r" )
+	f = open( config.files["CLOUDNINEFILES"], "r" )
 	for x in f:
 		file_list.append( x.strip() )
 
@@ -212,6 +196,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
 
 
 

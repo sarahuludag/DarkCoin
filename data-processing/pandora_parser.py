@@ -23,7 +23,7 @@ def parse_files( file_names ):
 	"""
 	Parse the given HTML files
 
-	Parses Agora HTML pages, extracts item details and stores it in items list
+	Parses Pandora HTML pages, extracts item details and stores it in items list
 
 	Parameters:
 	file_names (list): list of file names to be parsed
@@ -60,81 +60,64 @@ def parse_files( file_names ):
 				html_soup = BeautifulSoup( body, 'html.parser' )
 
 				# Start parsing
-				categories = [] # List to store categories
-				# Parse categories if exists
-				if ( html_soup.find_all( "div", class_ = "topnav-element" ) ):
-					cats = html_soup.find_all( "div", class_ = "topnav-element" )
+				if ( html_soup.find( "div", id = "content" ) ):
 
-					# For each category parsed, add it to the categories list
-					for category in cats:
-						if ( category.find( "a" ) ):
-							categories.append( category.find( "a" ).text )
-					
-					# Find products list item
-					if ( html_soup.find_all( "tr", class_ = "products-list-item" ) ):
-						products = html_soup.find_all( "tr", class_ = "products-list-item" )
+					content = html_soup.find( "div", id = "content" )
+					if ( html_soup.find( "table", class_ = "width70" ) ):
 
-						# For each row in products
-						for row in products:
+						# Crate variables
+						product_name = ""
+						image_id = ""
+						vendor = ""
+						price = ""
+						ship_from = ""
+						ship_to = ""
 
-							# Parse image link if it exists
-							image_id = ""
-							if ( row.find( "td", style = "text-align: center;" ) ):
-								if ( row.find( "td", style = "text-align: center;" ).find( "img" ) ):
-									image_id = str( row.find( "td", style = "text-align: center;" ).find( "img" )["src"] )
-									
+						# Find table
+						table = html_soup.find( "table", class_ = "width100" )
+						for row in table.find_all( "tr" ):
 
-							# Find product name and item description
-							if ( row.find( "td", class_ = "column-name" ) ):
-								if ( row.find( "td", class_ = "column-name" ).a ):
+							# Parse product name
+							if ( row.find( "th", colspan = "2" ) ):
+								product_name = row.find( "th", colspan = "2" ).text
 
-									# Parse product name
-									product_name = str( row.find( "td", class_ = "column-name" ).a.text ).strip()
+							# Parse image link
+							elif ( row.find( "td", rowspan = "6" ) ):
+								image_id = row.find( "td", rowspan = "6" ).find( "img" )["src"]
 
-									# Parse description if it exists
-									desc = ""
-									if ( row.find( "td", class_ = "column-name" ).span ):
-										desc = row.find( "td", class_ = "column-name" ).span.text.strip()
-										
+								# Parse vendor
+								if ( row.td.find_next( "td" ).text == "Seller:" ):
+									vendor = row.td.find_next( "td" ).find_next( "td" )
+									vendor = vendor.find( "a" ).text
 
-									# Parse price
-									if ( row.find_next( "td" ).find_next( "td" ).find_next( "td" ) ):
-										price_text = row.find_next( "td" ).find_next( "td" ).find_next( "td" ).text
+							elif ( row.td ):
 
-										# Check if price is Bitcoin
-										if " BTC" in price_text:
-											price = price_text.split(" ")[0]
-									
-											# Parse shipping information
-											ship_to, ship_from = "", ""
-											if ( row.find( "td", style = "white-space: nowrap;" ) ):
-												shipping = row.find( "td", style = "white-space: nowrap;" )
+								# Parse price
+								if ( row.td.text == "Price:" ):
+									if ( row.td.find_next( "td" ).text.find( "฿" ) ):
+										price = row.td.find_next( "td" ).text.split( "฿" )[1].split( " " )[0]
 
-												# Parse ship_from
-												if ( shipping.find( "img", class_ = "flag-img" ) and \
-													shipping.find( "i", class_  = "fa fa-truck" ) and \
-													shipping.find( "i", class_ = "fa fa-truck" ).next_sibling ):							
-													ship_from = shipping.find( "i", class_ = "fa fa-truck" ).next_sibling.next_sibling
+								# Parse shipping information
+								elif ( row.td.text == "Shipping from:" ):
+									shipping_from = row.td.find_next( "td" ).text
 
-												# Parse ship_to
-												if ( shipping.find( "i", class_ = "fa fa-home" ) ):
-													ship_to = str( shipping.find( "i", class_ = "fa fa-home" ).next_sibling ).strip().split( " " )[-1]
-													
+								elif ( row.td.text == "Shipping to:" ):
+									shipping_to = row.td.find_next( "td" ).text
 
-											# Parse vendor
-											vendor = ""
-											if ( row.find( "a", class_ = "gen-user-link" ) ):
-												vendor = str( row.find( "a", class_ = "gen-user-link" ).next_sibling )
-											
-											# Join categories into a string	
-											categories_str = str( "/".join( categories ) )
+						# Get description if exists
+						desc = ""		
+						if ( html_soup.find( "pre" ) ):
+							desc = html_soup.find( "pre" ).text
 
-											# Add parsed item to the items list
-											items.append( ( "agora", product_name, float( price ), categories_str, vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )
+						# Check if product name and price exist
+						if ( product_name and price ):
 
-										
+							# Add parsed item to the items list
+							items.append( ( "pandora", product_name, float( price ), "", vendor, desc, datetime.strptime( date, '%Y-%m-%d' ), ship_to, ship_from, image_id ) )								
+
 	# Return parsed items
 	return items
+
 
 
 def main():
@@ -149,7 +132,7 @@ def main():
 	file_list=[]
 
 	# Open the file and read file names
-	f = open( config.files["AGORAFILES"], "r" )
+	f = open( config.files["PANDORAFILES"], "r" )
 	for x in f:
 		file_list.append( x.strip() )
 
@@ -209,9 +192,6 @@ def main():
 
 
 
-
 if __name__ == "__main__":
     main()
-
-
 
