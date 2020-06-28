@@ -43,11 +43,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if( obj is not None ):	
+			if ( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -68,7 +68,7 @@ def parse_files( file_names ):
 						i +=1
 
 						# Parse image link
-						if( content.find( "img", style = "width:80px; height:80px" ) and content.find( "div", id = "img" ) ):
+						if ( content.find( "img", style = "width:80px; height:80px" ) and content.find( "div", id = "img" ) ):
 							images = content.find_all( "img", style = "width:80px; height:80px" )
 							image_id = images[0]["src"]
 
@@ -83,7 +83,7 @@ def parse_files( file_names ):
 							price = price_raw.text.split( "/" )[1].split()[0]
 							
 							# Check if product name and price is not null
-							if( product_name and price ):
+							if ( product_name and price ):
 
 								# Parse vendor
 								vendor = price_raw.find_next( "a" ).text

@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if( obj is not None ):	
+			if ( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -62,7 +62,7 @@ def parse_files( file_names ):
 				# Start parsing
 				categories = [] # List to store categories
 				# Parse categories if exists
-				if( html_soup.find( "span", class_ = "label label-primary" ) ):
+				if ( html_soup.find( "span", class_ = "label label-primary" ) ):
 					cat = html_soup.find( "span", class_ = "label label-primary" ).text
 
 					# Split categories, add it to the categories list
@@ -70,7 +70,7 @@ def parse_files( file_names ):
 					
 
 				# Delete one table 
-				if( html_soup.find( "table", class_ = "padded" ) ):
+				if ( html_soup.find( "table", class_ = "padded" ) ):
 					table = html_soup.find( "table", class_ = "padded" )
 					table.extract()
 				else:
@@ -99,14 +99,14 @@ def parse_files( file_names ):
 								last_two = row.find_all( "td", class_ = "nowrap right" )
 								
 								# Parse price and vendor
-								if( len( row.find_all( "div", class_ = "price" ) ) > 1 ):
+								if ( len( row.find_all( "div", class_ = "price" ) ) > 1 ):
 									price = row.find_all( "div", class_ = "price" )[1].text.split()[0]
 									
 									vendor = row.find( "div", class_ = "vendor" ).find( "a" ).text
 
 
 									# Check if product name and price exists
-									if( product_name and price ):
+									if ( product_name and price ):
 
 										# Join categories into a string	
 										categories_str = str( "/".join( categories ) )

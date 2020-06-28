@@ -64,15 +64,15 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET"], file_name )
-			if( obj is not None ):
+			if ( obj is not None ):
 				body = obj.get()['Body'].read().decode( 'utf-8' )
 
 				# Validate the json file
-				if( validateJSON( body ) ):
+				if ( validateJSON( body ) ):
 
 					# Load json into the data
 					data = json.loads( body )

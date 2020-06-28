@@ -41,11 +41,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if( obj is not None ):	
+			if ( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date and category name from the file name
@@ -61,25 +61,25 @@ def parse_files( file_names ):
 				for item in item_container: 
 
 					# Find title
-					if( item.find( "div", class_ = "item_title" ) ):
+					if ( item.find( "div", class_ = "item_title" ) ):
 						title = item.find( "div", class_ = "item_title" )
 
 						# Parse product name and href form the title
-						if( title.a ):
+						if ( title.a ):
 							link = title.a
 							product_name = title.a.text.strip()	# Name of the item
 							href = link.get( "href" )	# Link of the image of the item
 							
 							# Find item details
-							if( item.find( "div", class_ = "item_details" ) ):
+							if ( item.find( "div", class_ = "item_details" ) ):
 								details = item.find( "div", class_ = "item_details" )
 
 								# Parse vendor
-								if( details.a ):
+								if ( details.a ):
 									vendor = details.a.text.strip()	# Vendor of the item
 
 									# Parse shipping details, Give null value if not exists
-									if( details.br ):
+									if ( details.br ):
 										ship_from = details.br.next_sibling.strip()[12:]
 										ship_to = details.find_all('br')[-1].next_sibling.strip()[10:]
 									else:
@@ -87,7 +87,7 @@ def parse_files( file_names ):
 										ship_to = " "
 
 									# Parse price of the item
-									if( item.find( "div", class_ = "price_big" ) ):
+									if ( item.find( "div", class_ = "price_big" ) ):
 										price = item.find( "div", class_ = "price_big" ).text.strip()[1:]	# Price of the item
 
 										# Add parsed item to the items list

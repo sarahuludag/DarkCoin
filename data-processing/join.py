@@ -72,6 +72,16 @@ def main():
 
 	df_marketplace.registerTempTable( "marketplace" )
 
+	# Truncate the columns that are possibly too long
+	substring = udf( lambda x: x[0:510], StringType() )
+	substring2 = udf( lambda x: x[0:99], StringType() )
+	df_marketplace = df_marketplace.withColumn( 'description', substring( 'description' ) ) \
+		.withColumn( 'ship_to', substring2( 'ship_to' ) ) \
+		.withColumn( 'ship_from', substring2( 'ship_from' ) ) \
+		.withColumn( 'category', substring2( 'category' ) ) \
+		.withColumn( 'image_url', substring( 'image_url' ) ) \
+		.withColumn( 'product_name', substring( 'product_name' ) )
+ 
 	# Udf function to increment and return date num_days
 	date_incr = ( udf( lambda date, num_days:  date + relativedelta( days=num_days ), TimestampType() ) )
 

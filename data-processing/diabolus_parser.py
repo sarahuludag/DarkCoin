@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if( obj is not None ):	
+			if ( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -60,35 +60,35 @@ def parse_files( file_names ):
 				html_soup = BeautifulSoup( body, 'html.parser' )
 
 				# Start parsing
-				if( html_soup.find( "div", style = "min-width:275px" ) ):
+				if ( html_soup.find( "div", style = "min-width:275px" ) ):
 					content = html_soup.find( "div", style = "min-width:275px" )
 
 					# Parse product name
 					product_name = None
-					if( content.find( "h1" ) ):
+					if ( content.find( "h1" ) ):
 						product_name = content.find( "h1" ).text
 
-					if( content.find( "h3" ) ):
+					if ( content.find( "h3" ) ):
 						product_name = content.find( "h3" ).text
 
-					if( content.find( "h2" ) ):
+					if ( content.find( "h2" ) ):
 						product_name = content.find( "h2" ).text
 
-					if( content.find( "h4" ) ):
+					if ( content.find( "h4" ) ):
 						product_name = content.find( "h4" ).text
 					
 
 					# Parse image link if it exists
 					image_id = ""
-					if( content.find( "a", target = "_blank" ) ):
+					if ( content.find( "a", target = "_blank" ) ):
 						image_id = content.find( "a", target = "_blank" ).get( "href" )
 						
 
-					if( content.find_all( "span", class_ = "form-control" ) ):
+					if ( content.find_all( "span", class_ = "form-control" ) ):
 						spans = content.find_all( "span", class_ = "form-control" )
 						
 						# Check if Bitcoin is accepted
-						if( spans[0].find( "img", src = "btc.png" ) ):
+						if ( spans[0].find( "img", src = "btc.png" ) ):
 							if ( spans[1].text.split( "/" ) ):
 
 								# Parse price
@@ -99,7 +99,7 @@ def parse_files( file_names ):
 										
 
 							# Check if product name and price exists
-							if( product_name and price ):
+							if ( product_name and price ):
 								
 								# Parse vendor
 								vendor = ""
@@ -126,7 +126,7 @@ def parse_files( file_names ):
 
 								# Parse description if exists
 								desc = ""
-								if( content.find( "div", id = "cats" ) ):
+								if ( content.find( "div", id = "cats" ) ):
 									desc = content.find( "div", id = "cats" ).text
 
 								# Add parsed item to the items list

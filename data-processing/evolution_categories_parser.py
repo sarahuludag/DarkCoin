@@ -45,11 +45,11 @@ def parse_files( file_names ):
 	for file_name in file_names:
 
 		# Check if file name is valid
-		if( file_name is not None and file_name is not "" ):
+		if ( file_name is not None and file_name is not "" ):
 
 			# Read the file from S3 bucket and load into obj
 			obj = s3.Object( config.s3["S3BUCKET2"], file_name )
-			if( obj is not None ):	
+			if ( obj is not None ):	
 				body = obj.get()['Body'].read()
 
 				# Parse date from the file name
@@ -62,7 +62,7 @@ def parse_files( file_names ):
 				# Start parsing
 				categories = [] # List to store categories
 				# Parse categories if exists
-				if( html_soup.find( "ol", class_ = "breadcrumb" ) ):
+				if ( html_soup.find( "ol", class_ = "breadcrumb" ) ):
 					breadcrumb = html_soup.find( "ol", class_ = "breadcrumb" )
 					cats = breadcrumb.find_all( "li" )
 
@@ -73,36 +73,36 @@ def parse_files( file_names ):
 
 				# Parse image link if it exists
 				image_id = ""
-				if( html_soup.find( "div", class_ = "col-md-5" ) \
+				if ( html_soup.find( "div", class_ = "col-md-5" ) \
 					and html_soup.find( "div", class_ = "col-md-5" ).find( "a", class_ = "thumbnail" ) ):
 
 					image_id2 = html_soup.find( "div", class_ = "col-md-5" ).find( "a", class_ = "thumbnail" ).get( "href" )
 					image_id = "/".join( image_id2.split( "/" )[ 3: ] )
 
 
-				if( html_soup.find( "div", class_ = "col-md-7" ) ):
+				if ( html_soup.find( "div", class_ = "col-md-7" ) ):
 					info_column = html_soup.find( "div", class_ = "col-md-7" )
 
 					# Parse product name 
 					product_name = ""
-					if( info_column.h3 ):
+					if ( info_column.h3 ):
 						product_name = info_column.h3.text
 		
-					elif( info_column.h1 ):
+					elif ( info_column.h1 ):
 						product_name = info_column.h1.text
 
-					elif( info_column.h2 ):
+					elif ( info_column.h2 ):
 						product_name = info_column.h2.text
 
-					elif( info_column.h4 ):
+					elif ( info_column.h4 ):
 						product_name = info_column.h4.text	
 
 					# Check if product name exists
-					if( product_name ):
+					if ( product_name ):
 
 						# Parse vendor
 						vendor = ""
-						if( info_column.find( "div", class_ = "seller-info text-muted" ) \
+						if ( info_column.find( "div", class_ = "seller-info text-muted" ) \
 							and info_column.find( "div", class_ = "seller-info text-muted" ).find( "a" ) ):
 
 							vendor2 = info_column.find( "div", class_ = "seller-info text-muted" )
@@ -111,37 +111,37 @@ def parse_files( file_names ):
 
 						# Parse price
 						price = ""
-						if( info_column.find( "h4", class_ = "text-info" ) ):
+						if ( info_column.find( "h4", class_ = "text-info" ) ):
 							price2 = info_column.find( "h4", class_ = "text-info" ).text
 							price = price2.split( " " )[1]
 
-						elif( info_column.find( "h3", class_ = "text-info" ) ):
+						elif ( info_column.find( "h3", class_ = "text-info" ) ):
 							price2 = info_column.find( "h3", class_ = "text-info" ).text
 							price = price2.split( " " )[1]
 						
 
 						# Check if price exists
-						if( price ):  
+						if ( price ):  
 
 							# Parse description if exists
 							desc = ""
-							if( html_soup.find( "div", class_ = "product-summary" ) ):
+							if ( html_soup.find( "div", class_ = "product-summary" ) ):
 								desc = html_soup.find( "div", class_ = "product-summary" ).p.text
 
 
 							# Parse shipping information
 							# Parse ship_to
 							ship_to = ""
-							if( html_soup.find_all( "div", class_ = "col-md-9" ) \
+							if ( html_soup.find_all( "div", class_ = "col-md-9" ) \
 								and len( html_soup.find_all( "div", class_ = "col-md-9" ) ) > 1 ):	
  
 								ship_to2 = html_soup.find_all( "div", class_ = "col-md-9" )[1]
-								if( ship_to2.find_all( "p" ) and len( ship_to2.find_all( "p" ) ) > 1 ):
+								if ( ship_to2.find_all( "p" ) and len( ship_to2.find_all( "p" ) ) > 1 ):
 									ship_to = str( ship_to2.find_all( "p" )[1].text )
 
 							# Parse ship_from
 							ship_from = ""
-							if( html_soup.find( "div", class_ = "widget" ) ):
+							if ( html_soup.find( "div", class_ = "widget" ) ):
 								widgets = html_soup.find_all( "div", class_ = "widget" )
 								for widget in widgets:
 									if widget.h3 and widget.h3.text == "Ships From":
