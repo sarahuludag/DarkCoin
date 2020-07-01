@@ -1,8 +1,9 @@
-# DarkCoin
+# [DarkCoin](https://www.dark-co.in/)
 
 Bitcoin transaction tracker for Dark Web marketplaces
 
-[Link](https://bit.ly/DarkCoinPresent) to your presentation.
+You can check out the presentation [here](https://bit.ly/DarkCoinPresent).
+
 
 ## Introduction
 
